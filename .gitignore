@@ -5,8 +5,8 @@ __pycache__/
 
 # data files
 data/*
-utils/*
 models/*
+utils/*
 easse/*
 
 # Jupyter Notebook
