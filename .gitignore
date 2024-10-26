@@ -8,6 +8,7 @@ data/*
 models/*
 utils/*
 easse/*
+newsela/*
 
 # Jupyter Notebook
 .ipynb_checkpoints
