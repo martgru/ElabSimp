@@ -50,8 +50,10 @@ class LlamaAssistant:
         return messages
 
     def create_extended_prompt(self, system_prompt: str, context: str, elaboration_sent: str) -> str:
-        
-        combined_content = f"Context: {context}\nExplanation sentence: {elaboration_sent}"
+        # ELAB AND CONTEXT TOGETHER
+        combined_content = f"Text: {context}\nExplanation sentence: {elaboration_sent}"
+        # ELAB AND CONTEXT SEPERATELY
+        #combined_content = f"Context: {context}\nExplanation sentence: {elaboration_sent}"
         # ZERO-SHOT
         messages = [
             {"role": "user", "content": system_prompt},
