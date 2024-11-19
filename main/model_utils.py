@@ -49,35 +49,57 @@ class LlamaAssistant:
         ]
         return messages
 
-    def create_extended_prompt(self, system_prompt: str, context: str, elaboration_sent: str) -> str:
+    def create_extended_prompt(self, system_prompt: str, context: str, target: str) -> str:
         # ELAB AND CONTEXT TOGETHER
-        combined_content = f"Text: {context}\nExplanation sentence: {elaboration_sent}"
+        #combined_content = f"Text: {context}\nExplanation sentence: {elaboration_sent}"
         # ELAB AND CONTEXT SEPERATELY
         #combined_content = f"Context: {context}\nExplanation sentence: {elaboration_sent}"
-        # ZERO-SHOT
+        # ELAB TARGET PROVIDED
+        combined_content = f"Context: {context}\nExplanation target: {target}"
+        
+        # ZERO-SHOT for elaboration generation
         messages = [
             {"role": "user", "content": system_prompt},
             {"role": "assistant", "content": "Got it!"},
             {"role": "user", "content": combined_content}
         ]
+        
         """
-        # FEW-SHOT
+        # FEW-SHOT for elaboration generation
         messages = [
             {"role": "user", "content": system_prompt},
             {"role": "assistant", "content": "Got it!"},
             # Example 1
-            {"role": "user", "content": "Context: They were previously off-limits to female troops. The jobs are tough and dangerous. Still, allowing women to serve in combat by itself cannot solve the headcount problem. Earning a spot in a combat unit is hard.\nExplanation sentence: But serving in combat can lead to a promotion." },
-            {"role": "assistant", "content": '{"sentence": "But serving in combat can lead to a promotion.", "target": "serve in combat"}'},
+            {"role": "user", "content": "Text: Solar panels are becoming increasingly popular. These renewable energy sources can significantly reduce electricity costs for households. They are environmentally friendly.\nExplanation sentence:These renewable energy sources can significantly reduce electricity costs for households." },
+            {"role": "assistant", "content": '"target": "solar panels"'},
             # Example 2
-            {"role": "user", "content": "Context: .\nExplanation sentence: ." },
-            {"role": "assistant", "content": '{"sentence": "But serving in combat can lead to a promotion.", "target": "serve in combat"}'},
+            {"role": "user", "content": "Text:There are several famous landmarks in Paris. For instance, the Eiffel Tower and the Louvre Museum attract millions of visitors annually.\nExplanation sentence:For instance, the Eiffel Tower and the Louvre Museum attract millions of visitors annually. " },
+            {"role": "assistant", "content": '"target": "famous landmarks in Paris"'},
+            {"role":"user", "content":"Text:Volcanoes are natural openings in the Earth's crust. They allow molten rock, gases, and ash to escape from below the surface. This process has shaped many of the world's landscapes over millions of years.\nExplanation sentence:Volcanoes are natural openings in the Earth's crust. "},
+            {"role":"assistant","content": '"target": "volcanoes"'},
+            {"role": "user", "content": combined_content}
+        ]
+        """
+        """
+        # FEW-SHOT for target identification
+        messages = [
+            {"role": "user", "content": system_prompt},
+            {"role": "assistant", "content": "Got it!"},
+            # Example 1
+            {"role": "user", "content": "Text: Solar panels are becoming increasingly popular. These renewable energy sources can significantly reduce electricity costs for households. They are environmentally friendly.\nExplanation sentence:These renewable energy sources can significantly reduce electricity costs for households." },
+            {"role": "assistant", "content": '"target": "solar panels"'},
+            # Example 2
+            {"role": "user", "content": "Text:There are several famous landmarks in Paris. For instance, the Eiffel Tower and the Louvre Museum attract millions of visitors annually.\nExplanation sentence:For instance, the Eiffel Tower and the Louvre Museum attract millions of visitors annually. " },
+            {"role": "assistant", "content": '"target": "famous landmarks in Paris"'},
+            {"role":"user", "content":"Text:Volcanoes are natural openings in the Earth's crust. They allow molten rock, gases, and ash to escape from below the surface. This process has shaped many of the world's landscapes over millions of years.\nExplanation sentence:Volcanoes are natural openings in the Earth's crust. "},
+            {"role":"assistant","content": '"target": "volcanoes"'},
             {"role": "user", "content": combined_content}
         ]"""
         return messages
 
-    def generate_explanation(self, system_prompt: str, context: str) -> dict:
+    def generate_explanation(self, system_prompt: str, context: str, target: str) -> dict:
         """Generate a single explanation sentence given a context."""
-        prompt = self.create_prompt(system_prompt, context)
+        prompt = self.create_extended_prompt(system_prompt, context, target)
         response = self.generator(prompt)
         return response
 
@@ -125,27 +147,43 @@ class LlamaAssistant:
             
             return cleaned_text
 
-        def extract_sentence_and_target(generated_text):
+        def extract_target(generated_text):
             # search for "sentence" and "target" in the text
-            sentence_match = re.search(r'sentence', generated_text)
+            #sentence_match = re.search(r'sentence', generated_text)
             target_match = re.search(r'target', generated_text)
             
             # get the start and end positions of the keywords
-            sentence_part_start = sentence_match.end()
-            sentence_part_end = target_match.start()
+            #sentence_part_start = sentence_match.end()
+            #sentence_part_end = target_match.start()
             target_part_start = target_match.end()
             
             # extract everything between "sentence" and "target"
-            sentence = generated_text[sentence_part_start:sentence_part_end].strip()
+            #sentence = generated_text[sentence_part_start:sentence_part_end].strip()
             
             # extract everything after "target"
             target = generated_text[target_part_start:].strip()
             
             # postprocess the extracted values
-            cleaned_sentence = postprocess(sentence)
+            #cleaned_sentence = postprocess(sentence)
             cleaned_target = postprocess(target)
         
-            return cleaned_sentence, cleaned_target
+            #return cleaned_sentence, cleaned_target
+            return cleaned_target
+        
+        def extract_sentence(generated_text):
+            # search for "sentence" and "target" in the text
+            sentence_match = re.search(r'sentence', generated_text)
+            
+            # get the start and end positions of the keywords
+            sentence_part_start = sentence_match.end()
+            
+            # extract everything after "sentence"
+            sentence = generated_text[sentence_part_start:].strip()
+            
+            # postprocess the extracted values
+            cleaned_sentence = postprocess(sentence)        
+            #return cleaned_sentence, cleaned_target
+            return cleaned_sentence
 
         #formatted_generated_text = fix_json_format(generated_text)
 
@@ -153,11 +191,12 @@ class LlamaAssistant:
             # attempt to load the fixed JSON
             data = json.loads(generated_text)
             sentence = data.get("sentence", "")
-            target = data.get("target", "")
+            #target = data.get("target", "")
                 
         except json.JSONDecodeError:
             #print("Warning: Could not fix JSON format:", formatted_generated_text)
-            sentence, target = extract_sentence_and_target(generated_text)
+            #sentence, target = extract_sentence_and_target(generated_text)
+            sentence = extract_sentence(generated_text)
 
-        
-        return sentence, target
+        return sentence        
+        #return sentence, target
