@@ -264,3 +264,13 @@ def plot_loss_curves(trainer):
     plt.legend()
     plt.grid(True)
     plt.show()
+
+
+def remove_tags(text):
+    """
+    Removes all tag-like elements (e.g., <tag>) from the given text.
+
+    """
+    if isinstance(text, str):
+        return re.sub(r'<[^>]*>', '', text).strip()
+    return text
