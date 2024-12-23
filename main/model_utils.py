@@ -2,208 +2,109 @@ import json
 import torch
 from transformers import BitsAndBytesConfig, AutoModelForCausalLM, AutoTokenizer, pipeline
 import re
+from transformers import pipeline, StoppingCriteria, StoppingCriteriaList
+import torch
 
-class LlamaAssistant:
-    def __init__(self, model_name: str, cache_dir: str = "../models/llama/"):
-        # quantization config
-        self.quantization_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_use_double_quant=True,
-        )
-
-        # load model and tokenizer
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map="auto",
-            quantization_config=self.quantization_config,
-            cache_dir=cache_dir
-        )
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
-        
-        self.generator = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            use_cache=True,
-            device_map="auto",
-            #early_stopping=True, 
-            max_new_tokens=32,
-            #min_new_tokens=6,
-            #num_beams = 4,
-            #length_penalty=1.2,
-            return_full_text=False,
-            no_repeat_ngram_size=3,
-            num_return_sequences=1,
-            eos_token_id=self.tokenizer.eos_token_id,
-            pad_token_id=self.tokenizer.eos_token_id
-        )
-
-    def create_prompt(self, system_prompt: str, context: str) -> str:
-        
-        messages = [
-            {"role": "user", "content": system_prompt},
-            {"role": "assistant", "content": "Got it!"},
-            {"role": "user", "content": context}
+# for llama models
+class RefinedEndSentenceStoppingCriteria(StoppingCriteria):
+    def __init__(self, tokenizer, sentence_end_tokens):
+        super().__init__()
+        self.tokenizer = tokenizer
+        self.sentence_end_token_ids = [
+            self.tokenizer.convert_tokens_to_ids(token) for token in sentence_end_tokens
         ]
-        return messages
+        self.eos_token_id = tokenizer.eos_token_id  # Include eos_token_id
 
-    def create_extended_prompt(self, system_prompt: str, context: str, target: str) -> str:
-        # ELAB AND CONTEXT TOGETHER
-        #combined_content = f"Text: {context}\nExplanation sentence: {elaboration_sent}"
-        # ELAB AND CONTEXT SEPERATELY
-        #combined_content = f"Context: {context}\nExplanation sentence: {elaboration_sent}"
-        # ELAB TARGET PROVIDED
-        combined_content = f"Context: {context}\nExplanation target: {target}"
-        
-        # ZERO-SHOT for elaboration generation
-        messages = [
-            {"role": "user", "content": system_prompt},
-            {"role": "assistant", "content": "Got it!"},
-            {"role": "user", "content": combined_content}
-        ]
-        
-        """
-        # FEW-SHOT for elaboration generation
-        messages = [
-            {"role": "user", "content": system_prompt},
-            {"role": "assistant", "content": "Got it!"},
-            # Example 1
-            {"role": "user", "content": "Text: Solar panels are becoming increasingly popular. These renewable energy sources can significantly reduce electricity costs for households. They are environmentally friendly.\nExplanation sentence:These renewable energy sources can significantly reduce electricity costs for households." },
-            {"role": "assistant", "content": '"target": "solar panels"'},
-            # Example 2
-            {"role": "user", "content": "Text:There are several famous landmarks in Paris. For instance, the Eiffel Tower and the Louvre Museum attract millions of visitors annually.\nExplanation sentence:For instance, the Eiffel Tower and the Louvre Museum attract millions of visitors annually. " },
-            {"role": "assistant", "content": '"target": "famous landmarks in Paris"'},
-            {"role":"user", "content":"Text:Volcanoes are natural openings in the Earth's crust. They allow molten rock, gases, and ash to escape from below the surface. This process has shaped many of the world's landscapes over millions of years.\nExplanation sentence:Volcanoes are natural openings in the Earth's crust. "},
-            {"role":"assistant","content": '"target": "volcanoes"'},
-            {"role": "user", "content": combined_content}
-        ]
-        """
-        """
-        # FEW-SHOT for target identification
-        messages = [
-            {"role": "user", "content": system_prompt},
-            {"role": "assistant", "content": "Got it!"},
-            # Example 1
-            {"role": "user", "content": "Text: Solar panels are becoming increasingly popular. These renewable energy sources can significantly reduce electricity costs for households. They are environmentally friendly.\nExplanation sentence:These renewable energy sources can significantly reduce electricity costs for households." },
-            {"role": "assistant", "content": '"target": "solar panels"'},
-            # Example 2
-            {"role": "user", "content": "Text:There are several famous landmarks in Paris. For instance, the Eiffel Tower and the Louvre Museum attract millions of visitors annually.\nExplanation sentence:For instance, the Eiffel Tower and the Louvre Museum attract millions of visitors annually. " },
-            {"role": "assistant", "content": '"target": "famous landmarks in Paris"'},
-            {"role":"user", "content":"Text:Volcanoes are natural openings in the Earth's crust. They allow molten rock, gases, and ash to escape from below the surface. This process has shaped many of the world's landscapes over millions of years.\nExplanation sentence:Volcanoes are natural openings in the Earth's crust. "},
-            {"role":"assistant","content": '"target": "volcanoes"'},
-            {"role": "user", "content": combined_content}
-        ]"""
-        return messages
+    def is_valid_stop(self, input_ids):
+        # Get the last token and the one before it
+        if len(input_ids[0]) < 2:
+            return False  # Not enough tokens to decide
+        last_token_id = input_ids[0, -1].item()
+        second_last_token_id = input_ids[0, -2].item()
 
-    def generate_explanation(self, system_prompt: str, context: str, target: str) -> dict:
-        """Generate a single explanation sentence given a context."""
-        prompt = self.create_extended_prompt(system_prompt, context, target)
-        response = self.generator(prompt)
-        return response
+        # Decode tokens to check context
+        last_token = self.tokenizer.decode([last_token_id])
+        second_last_token = self.tokenizer.decode([second_last_token_id])
 
-    def find_explanation_target(self, system_prompt: str, context: str, elaboration_sent: str ) -> dict:
-        """Generate a single explanation sentence given a context."""
-        prompt = self.create_extended_prompt(system_prompt, context, elaboration_sent)
-        response = self.generator(prompt)
-        return response
+        # Stop if it's a sentence-ending token and not part of an abbreviation
+        if (
+            last_token in [".", "!", "?"]  # Check if it's a sentence-ending token
+            and len(second_last_token) > 1  # Ensure not part of an abbreviation
+            and not second_last_token.isupper()  # Ensure it's not "U.S." or similar
+        ):
+            return True
+
+        # Include end-of-sequence token
+        return last_token_id == self.eos_token_id
+
+    def __call__(self, input_ids, scores, **kwargs):
+        return self.is_valid_stop(input_ids)
 
 
-    @staticmethod
-    def extract_response(response) -> tuple:
-        """Extract the sentence and target from the model's response."""
-        generated_text = response[0]["generated_text"]
+from tqdm.notebook import tqdm
+import pandas as pd
+from dataset_utils import create_results_df
 
-        def fix_json_format(generated_text):
-            
-            # remove any extra commas after the "sentence" field or before the "target" field
-            generated_text = re.sub(r',\s*,', ',', generated_text)
-            generated_text = re.sub(r'(:\s*".+?")\s*,\s*,', r'\1,', generated_text)
-            # remove unnecessary escape characters for single quotes inside double-quoted strings
-            generated_text = re.sub(r'\\\'', "'", generated_text)
-            # fix missing colons between keys and values (e.g., "target" "value")
-            generated_text = re.sub(r'("sentence"|\"target")\s*(")', r'\1: \2', generated_text)
-            # wrap unquoted target values with double quotes
-            generated_text = re.sub(r'("target":\s*)([^\s"][^,}]*)', r'\1"\2"', generated_text)
-            # correct any malformed keys like "target):" or "target}:"
-            generated_text = re.sub(r'("target)\)(:)', r'\1":', generated_text)  
-            generated_text = re.sub(r'("target)}(:)', r'\1":', generated_text)
-            # ddd missing closing brace if necessary
-            #if generated_text.count("{") > generated_text.count("}"):
-                #generated_text += "}"
-            # add a comma between "sentence" and "target" if missing
-            if '"sentence"' in generated_text and '"target"' in generated_text:
-                generated_text = re.sub(r'("sentence":\s*".+?")\s*("target":)', r'\1, \2', generated_text)
-            
-            return generated_text
+def extract_response(text, prefix = "### Assistant:"):
+    if prefix in text:
+        return text.split(prefix, 1)[1].strip()
+    return None
 
-        def postprocess(text):
-            # remove any leading or trailing symbols like quotes, brackets, colons, braces, parentheses, etc.
-            cleaned_text = re.sub(r'^[\s"\'{}()\[\]:,]*|[\s"\'{}()\[\]:,]*$', '', text)
-            
-            # remove any embedded unnecessary characters (extra spaces are preserved within the text)
-            cleaned_text = re.sub(r'[{}()\[\]:]+', '', cleaned_text)
-            
-            return cleaned_text
 
-        def extract_target(generated_text):
-            # search for "sentence" and "target" in the text
-            #sentence_match = re.search(r'sentence', generated_text)
-            target_match = re.search(r'target', generated_text)
-            
-            # get the start and end positions of the keywords
-            #sentence_part_start = sentence_match.end()
-            #sentence_part_end = target_match.start()
-            target_part_start = target_match.end()
-            
-            # extract everything between "sentence" and "target"
-            #sentence = generated_text[sentence_part_start:sentence_part_end].strip()
-            
-            # extract everything after "target"
-            target = generated_text[target_part_start:].strip()
-            
-            # postprocess the extracted values
-            #cleaned_sentence = postprocess(sentence)
-            cleaned_target = postprocess(target)
-        
-            #return cleaned_sentence, cleaned_target
-            return cleaned_target
-        
-        def extract_sentence(generated_text):
-            # search for "sentence" and "target" in the text
-            sentence_match = re.search(r'sentence', generated_text)
-            
-            # get the start and end positions of the keywords
-            sentence_part_start = sentence_match.end()
-            
-            # extract everything after "sentence"
-            sentence = generated_text[sentence_part_start:].strip()
-            
-            # postprocess the extracted values
-            cleaned_sentence = postprocess(sentence)        
-            #return cleaned_sentence, cleaned_target
-            return cleaned_sentence
+def generate_predictions_with_llama_instr(device, model, tokenizer, dataset, formatted_test_dataset, ds_type, setting, num_examples):
 
-        #formatted_generated_text = fix_json_format(generated_text)
+    output_name = f"{ds_type}-{setting}"
+    search_type = {"beam-search":{"num_beams":4, "early_stopping":True, 
+                              "filename":f"../data/gen_predictions/predictions_llama-instruct-few-shot-{output_name}-{num_examples}.csv"},
+              "greedy":{"num_beams":1, "early_stopping":False,
+                        "filename":f"../data/gen_predictions/predictions_llama-instruct-few-shot-{output_name}-greedy-{num_examples}.csv"}
+    }
 
-        try:
-            # attempt to load the fixed JSON
-            data = json.loads(generated_text)
-            sentence = data.get("sentence", "")
-            #target = data.get("target", "")
+    # stopping criteria
+    sentence_end_tokens = [".","\n","!", "?"]
+    stopping_criteria = StoppingCriteriaList([RefinedEndSentenceStoppingCriteria(tokenizer, sentence_end_tokens)])
+
+    # move to GPU
+    model.to(device)
+    model.eval()
+    model.config.use_cache = True
+
+    for search_t in search_type.keys():
+        df_results = create_results_df(dataset)
+        for idx, row in tqdm(df_results.iterrows(),total=len(df_results)):
+            if row["pred_elaboration"]=="":
+                inputs = tokenizer(
+                    formatted_test_dataset[idx], #input_text,
+                    return_tensors="pt",
+                    padding=True,
+                    truncation=True,
+                    max_length=2500 # 1024 for short, 2500 for long
+                ).to(device)
                 
-        except json.JSONDecodeError:
-            #print("Warning: Could not fix JSON format:", formatted_generated_text)
-            #sentence, target = extract_sentence_and_target(generated_text)
-            sentence = extract_sentence(generated_text)
-
-        return sentence        
-        #return sentence, target
-
-
-
-
+                with torch.no_grad():
+                    output_ids = model.generate(
+                        input_ids=inputs["input_ids"],
+                        attention_mask=inputs["attention_mask"],
+                        max_new_tokens=32, 
+                        min_length=10,
+                        do_sample=False, 
+                        temperature=None,  # not used in greedy decoding
+                        top_p=None,# not used in greedy decoding
+                        num_beams = search_type[search_t]["num_beams"],
+                        early_stopping = search_type[search_t]["early_stopping"],
+                        num_return_sequences=1,
+                        no_repeat_ngram_size=3,
+                        eos_token_id=tokenizer.eos_token_id,
+                        pad_token_id=tokenizer.eos_token_id,
+                        stopping_criteria=stopping_criteria
+                    )
+                
+                generated_text = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+                response = extract_response(generated_text) 
+                df_results.at[idx,"pred_elaboration"] = response
+        
+        df_results.to_csv(search_type[search_t]["filename"], index=False)
+        print(f"Saved {search_type[search_t]['filename']}")
 
 import os
 import shutil
