@@ -161,7 +161,7 @@ For example:\n
 {}
 {}\n### Assistant:"""
 
-base_prompt_zeroshot_train = """### User: You are an expert in clarifying unclear, complex term or concept in a given text. Your task is to generate exactly ONE short concise explanation sentence (made up of around 10 words or fewer) in plain English for a given context text. The tone should be plain and simple! {}\n### Assistant: {}"""
+base_prompt_zeroshot_train = """### User: You are an expert in clarifying unclear, complex terms or concepts in a given text. Your task is to generate exactly ONE short concise explanation sentence (made up of around 10 words or fewer) in plain English for a given context text. The tone should be plain and simple! {}\n### Assistant: {}"""
 
 base_prompt_zeroshot_test = """### User: You are an expert in clarifying unclear, complex term or concept in a given text. Your task is to generate exactly ONE short concise explanation sentence (made up of around 10 words or fewer) in plain English for a given context text. The tone should be plain and simple! {}\n### Assistant:"""
 
