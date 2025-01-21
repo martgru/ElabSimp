@@ -63,6 +63,69 @@ def merge_dataframes(dfs):
         merged_df = pd.merge(merged_df, df, on='dataset')
     return merged_df
 
+def compare_setting_bar(dataframe, score_type, setting, title="Comparison by Type", dataset_column='dataset', exclude_datasets=None, exclude_columns=None, baseline=None):
+    """
+    Creates a bar graph comparing models based on a specific column type (e.g., 'base-b1').
+    Baseline is represented as a striped bar.
+    """
+    if exclude_datasets is None:
+        exclude_datasets = []
+
+    if exclude_columns is None:
+        exclude_columns = []
+
+    filtered_dataframe = dataframe[~dataframe[dataset_column].isin(exclude_datasets)].reset_index(drop=True)
+    filtered_columns = [col for col in filtered_dataframe.columns
+                        if (
+                            (setting == "target-sent" and setting in col and f"{setting}-target" not in col and f"{setting}-subject" not in col)
+                            or (setting != "target-sent" and setting in "".join(col.split('_')[-1]))
+                        )
+                        and col not in exclude_columns
+                        ]
+
+    x_labels = filtered_dataframe[dataset_column].values
+    x_positions = np.arange(len(x_labels))
+
+    bar_width = 0.15
+    num_models = len(filtered_columns)
+    
+    plt.figure(figsize=(12, 6))
+
+    # Plot bars for each model
+    for i, col in enumerate(filtered_columns):
+        label_name = col.split('_')[0]
+        if "llama-instr-few-shot" in label_name:
+            label_name = "llama-instruct-" + "".join(col.split('_')[1].split('-')[-2])
+
+        plt.bar(x_positions + i * bar_width, filtered_dataframe[col], width=bar_width, label=label_name)
+
+    # Add baseline as a striped bar
+    if baseline and baseline in filtered_dataframe.columns:
+        plt.bar(x_positions + num_models * bar_width, filtered_dataframe[baseline], width=bar_width, label="Baseline", hatch='//', color='gray')
+
+    # Set labels and title
+    plt.xlabel("Dataset")
+    plt.ylabel(f"{score_type} Score")
+    plt.title(title)
+    
+    # Set x-ticks and x-labels
+    plt.xticks(x_positions + (num_models * bar_width) / 2, x_labels, rotation=45)
+
+    # legend
+    if score_type == "BART":
+        legend_loc = "upper right"
+    else: 
+        legend_loc = "lower right"
+    
+    plt.legend(title="Models", loc=legend_loc)
+
+    # Display grid
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Show plot
+    plt.tight_layout()
+    plt.show()
+
 
 def compare_setting(dataframe, score_type,setting, title="Comparison by Type", dataset_column='dataset', exclude_datasets=None, exclude_columns=None,baseline=None):
     """
@@ -129,6 +192,7 @@ def compare_setting(dataframe, score_type,setting, title="Comparison by Type", d
     # display grid
     plt.grid(True)
     plt.show()
+
 
 def compare_prompt_setting(dataframe, score_type, dataset_column, column_type, title="Comparison by Type"):
 
