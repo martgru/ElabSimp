@@ -7,6 +7,8 @@ This repository provides coding resources for the paper "Elaborative Text Simpli
 ## 🔹 Overview  
 Our approach introduces a **target-specified generation** method, which explicitly identifies **elaboration targets**, a phrase or sentence requiring clarification—before generating an elaboration. Unlike traditional data-driven simplification methods, our framework more accurately reflects real-world scenarios where readers actively seek explanations for complex terms or concepts they do not understand.  
 
+![Method Overview](fig/target-setting.png)
+
 ---
 
 ## 🔹 Data
