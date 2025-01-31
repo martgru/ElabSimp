@@ -11,8 +11,8 @@ import torch
 import os
 
 setting_ds_dict = {
-    #"base": ["c2s", "c2sp", "c4s", "c4sp"],
-    #"masked": ["c2s", "c2sp", "c4s", "c4sp"],
+    "base": ["c2s", "c2sp", "c4s", "c4sp"],
+    "masked": ["c2s", "c2sp", "c4s", "c4sp"],
     "target-phrase": ["c2s", "c2sp", "c4s", "c4sp"],
     "target-sent": ["c2s", "c2sp", "c4s", "c4sp"],
     "target-sent-target": ["c2s", "c2sp", "c4s", "c4sp"],
