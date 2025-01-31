@@ -9,8 +9,8 @@ This directory contains Jupyter notebooks covering the key stages of the project
 - **Fine-tuning Notebooks**: guides for fine-tuning **BART** and **LLaMA** models.
 - **Elaboration Generation Notebook**: generates elaborations using the **pretrained LLaMA instruction-tuned model**.
 - **Evaluation Notebook**: assesses the quality of generated elaborations using various metrics.
-- **Target Estimation Notebook**: identifies the elaboration target within the text.
 - **Results Inspection Notebook**: presents and compares the final results across different settings and models.
+- **Target Estimation Notebook**: identifies the elaboration target within the text.
 
 ### 🔹 `scripts/`
 This directory contains Python scripts for automating the process:
@@ -21,9 +21,10 @@ This directory contains Python scripts for automating the process:
 ### 🔹 `utils/`
 This directory includes Python files with utility functions for:
 - **Dataset processing**
-- **Prompt handling**
-- **Model fine-tuning**
 - **Visualization tools**
+- **Model fine-tuning**
+- **Prompt handling**
+
 
 
   
