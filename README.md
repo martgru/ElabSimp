@@ -13,7 +13,7 @@ Our approach introduces a **target-specified generation** method, which explicit
 
 ## 🔹 Data
 
-This work is built upon the dataset introduced by [Srikanth & Li (2021)](https://aclanthology.org/2021.findings-acl.455/) in their paper **"Elaborative Simplification: Content Addition and Explanation Generation in Text Simplification."** Their study annotated 1,299 elaborations within the [Newsela corpus](https://aclanthology.org/Q15-1021/) developed by **Xu et al. (2015).**  
+This work is built upon the dataset introduced by [Srikanth & Li (2021)](https://aclanthology.org/2021.findings-acl.455/) in their paper **"Elaborative Simplification: Content Addition and Explanation Generation in Text Simplification."** Their study annotated 1.3K instances of elaborative simplification within the [Newsela corpus](https://aclanthology.org/Q15-1021/) developed by **Xu et al. (2015).**  
 
 > **Note:** Due to **Newsela's copyright terms**, we are unable to publicly release the dataset used in this work.
 
