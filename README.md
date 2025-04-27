@@ -1,6 +1,6 @@
 # 🚀 Elaborative Text Simplification via Target Estimation using Large Language Models  
 
-This repository provides coding resources for the paper "Elaborative Text Simplification via Target Estimation using Large Language Models." It is designed to support further research in **Elaborative Text Simplification**, a growing field that focuses on enhancing text comprehension by adding relevant clarifications. 
+This repository provides coding resources for the paper "Elaborative Text Simplification via Target Estimation using Large Language Models," presented at the NLP2025 Conference held in Nagasaki, Japan (言語処理学会第31回年次大会). It is designed to support further research in **Elaborative Text Simplification**, a growing field that focuses on enhancing text comprehension by adding relevant clarifications. 
 
 ---
 
