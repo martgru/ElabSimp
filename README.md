@@ -17,6 +17,8 @@ This work is built upon the dataset introduced by [Srikanth & Li (2021)](https:/
 
 > **Note:** Due to **Newsela's copyright terms**, we are unable to publicly release the dataset used in this work.
 
+---
+
 ## 🔹 License
 
 This project is licensed under the MIT License.  
